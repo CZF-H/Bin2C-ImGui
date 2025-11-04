@@ -1,0 +1,8 @@
+/cmake-build*/
+/.vscode/
+/.idea/*
+!/.idea/cmake.xml
+!/.idea/dictionaries
+/.cproject
+/.project
+/.cmake/
