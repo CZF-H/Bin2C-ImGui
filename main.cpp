@@ -21,24 +21,24 @@
 using namespace BS;
 namespace fs = std::filesystem;
 
-constexpr ImVec2 NULL_SIZE(0, 0);
-constexpr int WINDOW_SIZE_OFFSET = 2;
-constexpr int WINDOW_POS_OFFSET = -(WINDOW_SIZE_OFFSET / 2);
+inline constexpr int WINDOW_SIZE_OFFSET = 2;
+inline constexpr int WINDOW_POS_OFFSET = -(WINDOW_SIZE_OFFSET / 2);
+inline constexpr ImVec2 APP_WINDOW_DEFAULT_SIZE(1000, 750);
 
 bool initImGui = false;
 
 thread_pool g_BackgroundTask(2);
-std::stringstream g_OSS;
+static std::stringstream g_OSS;
 class{}* g_App = nullptr;
 
 static void glfw_error_callback(const int error, const char* description) {
     std::cerr << "GLFW error " << error << " " << description << std::endl;
 }
 
-ImVec4 g_BackgroundColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+static ImVec4 g_BackgroundColor(0.45f, 0.55f, 0.60f, 1.00f);
+static float g_Scale;
 GLFWmonitor* g_PrimaryMonitor;
 GLFWwindow* g_Window;
-float g_Scale;
 
 using env = std::optional<std::string>;
 env GetENV(const std::string& key) {
@@ -66,9 +66,12 @@ inline 屏幕方向 获取屏幕方向(const ImVec2i& 屏幕尺寸) {
 inline ImVec2 ToImVec2(const ImVec2i& o) {
     return {static_cast<float>(o.x), static_cast<float>(o.y)};
 }
+inline ImVec2i ToImVec2i(const ImVec2& o) {
+    return {static_cast<int>(o.x), static_cast<int>(o.y)};
+}
 
 void GUI() {
-    ImVec2i WindowSize;
+    static ImVec2i WindowSize;
     glfwGetWindowSize(g_Window, &WindowSize.x, &WindowSize.y);
 
     if (!initImGui) {
@@ -194,8 +197,8 @@ void GUI() {
         return false;
     }();
 
-    fs::path inputFS = inputFile;
-    fs::path outputFS = outputFile;
+    const fs::path inputFS = inputFile;
+    const fs::path outputFS = outputFile;
 
     static Bin2C::Bin inputBin;
     static std::future<Bin2C::Res> outputFuture;
@@ -286,7 +289,7 @@ void GUI() {
                 ImGui::SameLine();
                 ChooseFile(inputFile);
                 ImGui::Spacing();
-                if (ImGui::BeginChild("###File", NULL_SIZE, true)) {
+                if (ImGui::BeginChild("###File", ImVec2(), true)) {
                     auto FileSize = [](const fs::path& ifs) {
                         std::uintmax_t bitSize = 0ULL;
                         if (!fs::is_regular_file(ifs))
@@ -355,7 +358,7 @@ void GUI() {
                                      ? inputFS.parent_path().string()
                                      : "Bin2C_Output";
 
-                if (ImGui::BeginChild("###Path/File", NULL_SIZE, true)) {
+                if (ImGui::BeginChild("###Path/File", ImVec2(), true)) {
                     ImGui::PushStyleVar(ImGuiStyleVar_SeparatorTextAlign, ImVec2(0.5f, 0.5f));
                     if (fs::is_directory(outputFS)) {
                         ImGui::SeparatorText("目录信息:");
@@ -588,7 +591,7 @@ void GUI() {
 }
 
 
-int main(int, char**) {
+int main(int /*argc*/, char** argv) {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return -1;
 
@@ -597,12 +600,12 @@ int main(int, char**) {
 
     g_PrimaryMonitor = glfwGetPrimaryMonitor();
     g_Scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
+
+    static const std::string AppName = fs::path(argv[0]).filename().string() + " | Bin2C-ImGui";
     g_Window = glfwCreateWindow(
-        static_cast<int>(1000 * g_Scale),
-        static_cast<int>(750 * g_Scale),
-        "Bin2C-ImGui",
-        nullptr,
-        nullptr
+        static_cast<int>(APP_WINDOW_DEFAULT_SIZE.x * g_Scale),
+        static_cast<int>(APP_WINDOW_DEFAULT_SIZE.y * g_Scale),
+        AppName.c_str(), nullptr, nullptr
     );
 
     if (!g_Window) return -1;
@@ -616,10 +619,9 @@ int main(int, char**) {
             ImGui_ImplGlfw_Sleep(10);
             continue;
         }
-
-        int display_w, display_h;
-        glfwGetFramebufferSize(g_Window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
+        static ImVec2i display;
+        glfwGetFramebufferSize(g_Window, &display.x, &display.y);
+        glViewport(0, 0, display.x, display.y);
         glClearColor(
             g_BackgroundColor.x * g_BackgroundColor.w,
             g_BackgroundColor.y * g_BackgroundColor.w,
@@ -634,8 +636,7 @@ int main(int, char**) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
 
-
-    //ImGui::DestroyContext();
+    // ImGui::DestroyContext();
     // FIXME: 异常: Exception 0x80000003 encountered at address 0x7ffc21f06766
 
     glfwDestroyWindow(g_Window);
