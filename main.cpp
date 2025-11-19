@@ -10,11 +10,13 @@
 #include "imgui_impl_opengl3.h"
 #include "ImGuiFileDialog.h"
 
+#include "imutils/fonts.hpp"
+
 #include "include/NotoSansSC-Regular.h"
 
 #include "include/BS_thread_pool.hpp"
 #include "imgui_internal.h"
-#include "bin2c/Bin2C.hpp"
+#include "bin2file/Bin2C.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -64,10 +66,10 @@ inline 屏幕方向 获取屏幕方向(const ImVec2i& 屏幕尺寸) {
 }
 
 inline ImVec2 ToImVec2(const ImVec2i& o) {
-    return {static_cast<float>(o.x), static_cast<float>(o.y)};
+    return { static_cast<float>(o.x), static_cast<float>(o.y )};
 }
 inline ImVec2i ToImVec2i(const ImVec2& o) {
-    return {static_cast<int>(o.x), static_cast<int>(o.y)};
+    return { static_cast<int>(o.x), static_cast<int>(o.y) };
 }
 
 void GUI() {
@@ -88,47 +90,6 @@ void GUI() {
         style.ScaleAllSizes(g_Scale);
         style.FontScaleDpi = g_Scale;
 
-        static const ImWchar LanguagesRanges[] = {
-                0x0020,
-                0x007F,
-                // Latin kaomoji basic
-                0x00A0,
-                0x00FF,
-                // Latin kaomoji exp
-                0x0400,
-                0x04FF,
-                // Russian
-                0x2190,
-                0x21FF,
-                // Arrows
-                0x25A0,
-                0x25FF,
-                // kaomoji graphics and geometry
-                0x2600,
-                0x26FF,
-                // kaomoji miscellaneous
-                0x2700,
-                0x27BF,
-                // kaomoji dingbats
-                0x3000,
-                0x303F,
-                // CJK kaomoji
-                0x3040,
-                0x309F,
-                // Japanese kaomoji exp
-                0x30A0,
-                0x30FF,
-                // Japanese kaomoji
-                0x3400,
-                0x4DBF,
-                // 生僻字
-                0x4E00,
-                0x9FFF,
-                // 中日韩统一表意文字
-
-                0
-            };
-
         io.Fonts->AddFontFromMemoryTTF(
             NotoSansSC_Regular_ttf,
             // 自动退化指针
@@ -138,7 +99,20 @@ void GUI() {
             // 显式转换
             21.0f,
             nullptr,
-            LanguagesRanges
+            ImUtils::Glyph({
+                {0x0020, 0x007F}, // Latin kaomoji basic
+                {0x00A0, 0x00FF}, // Latin kaomoji exp
+                {0x0400, 0x04FF}, // Russian
+                {0x2190, 0x21FF}, // Arrows
+                {0x25A0, 0x25FF}, // kaomoji graphics and geometry
+                {0x2600, 0x26FF}, // kaomoji miscellaneous
+                {0x2700, 0x27BF}, // kaomoji dingbats
+                {0x3000, 0x303F}, // CJK kaomoji
+                {0x3040, 0x309F}, // Japanese kaomoji exp
+                {0x30A0, 0x30FF}, // Japanese kaomoji
+                {0x3400, 0x4DBF}, // 生僻字
+                {0x4E00, 0x9FFF}, // 中日韩统一表意文字
+            })
         );
 
         io.IniFilename = nullptr;
@@ -200,8 +174,8 @@ void GUI() {
     const fs::path inputFS = inputFile;
     const fs::path outputFS = outputFile;
 
-    static Bin2C::Bin inputBin;
-    static std::future<Bin2C::Res> outputFuture;
+    static Bin2::Bin inputBin;
+    static std::future<Bin2::Res> outputFuture;
 
 
     auto IntImVec2 = [](const int x, const int y) {
@@ -430,62 +404,58 @@ void GUI() {
             } else ImGui::SeparatorText("二进制操作");
 
             if (ImGui::BeginChild("##操作")) {
+                static Bin2::ToFile::Config cfg;
                 try {
-                    static bool PrettyOutput = true;
-                    ImGui::Checkbox(" 美观输出 ", &PrettyOutput);
+                    ImGui::Checkbox(" 美观化 ", &cfg.pretty);
 
                     ImGui::SameLine();
-                    static bool ConstData = false;
-                    ImGui::Checkbox(" 使用常量 ", &ConstData);
+                    ImGui::Checkbox(" 常量化 ", &cfg.constant);
 
                     ImGui::SameLine();
-                    static bool HWithSRC = false;
-                    ImGui::Checkbox(" 源+头输出 ", &HWithSRC);
+                    ImGui::Checkbox(" 源输出 ", &cfg.source);
 
-                    ImGui::Text("输出类型：");
+                    ImGui::Text("类型: ");
                     ImGui::SameLine();
                     static const char* 输出类型_选项[] = {
-                            Bin2C::Type::u8.GetName(),
-                            Bin2C::Type::u16.GetName(),
-                            Bin2C::Type::u32.GetName(),
-                            Bin2C::Type::u64.GetName()
+                            Bin2::Type::u8.GetName(),
+                            Bin2::Type::u16.GetName(),
+                            Bin2::Type::u32.GetName(),
+                            Bin2::Type::u64.GetName()
                         };
 
                     static int 输出类型_SelectedItem = 0;
-                    static Bin2C::TypeFlag 输出类型_SelectedFlag = Bin2C::Type::u8;
                     ImGui::Combo("##输出类型", &输出类型_SelectedItem, 输出类型_选项, IM_ARRAYSIZE(输出类型_选项));
                     switch (输出类型_SelectedItem) {
                         case 0:
-                            输出类型_SelectedFlag = Bin2C::Type::u8;
+                            cfg.flag = Bin2::Type::u8;
                             break;
                         case 1:
-                            输出类型_SelectedFlag = Bin2C::Type::u16;
+                            cfg.flag = Bin2::Type::u16;
                             break;
                         case 2:
-                            输出类型_SelectedFlag = Bin2C::Type::u32;
+                            cfg.flag = Bin2::Type::u32;
                             break;
                         case 3:
-                            输出类型_SelectedFlag = Bin2C::Type::u64;
+                            cfg.flag = Bin2::Type::u64;
                             break;
                         default:
                             输出类型_SelectedItem = 0;
                             break;
                     }
 
-                    ImGui::BeginDisabled(HWithSRC);
-                    ImGui::Text("输出形式：");
+                    ImGui::BeginDisabled(cfg.source);
+                    ImGui::Text("形式: ");
                     ImGui::SameLine();
                     static const char* 输出形式_选项[] = {
-                            "默认",
-                            "静态",
-                            "内联"
+                            "默认 None",
+                            "静态 static",
+                            "内联 inline (C++17)"
                         };
                     static int 输出形式_SelectedItem = 0;
-                    static Bin2C::ExportType 输出形式_SelectedFlag = Bin2C::ExportType_None;
                     ImGui::Combo("##输出形式", &输出形式_SelectedItem, 输出形式_选项, IM_ARRAYSIZE(输出形式_选项));
                     if (输出形式_SelectedItem < 0 || 输出形式_SelectedItem >= IM_ARRAYSIZE(输出形式_选项))
                         输出形式_SelectedItem = 0;
-                    输出形式_SelectedFlag = static_cast<Bin2C::ExportType>(输出形式_SelectedItem);
+                    cfg.exportType = static_cast<Bin2::ExportType>(输出形式_SelectedItem);
                     ImGui::EndDisabled();
 
                     ImGui::Spacing();
@@ -517,19 +487,12 @@ void GUI() {
                         }
                         outputFuture = g_BackgroundTask.submit_task(
                             [&]() {
-                                Bin2C::Res result;
-                                const Bin2C::ToFile functor = fs::is_regular_file(outputFS)
-                                                                  ? Bin2C::ToFile(outputFS)
-                                                                  : Bin2C::ToFile(outputFS, &inputBin, HWithSRC);
+                                Bin2::Res result;
+                                const Bin2::ToFile functor = fs::is_regular_file(outputFS)
+                                                                  ? Bin2::ToFile(outputFS)
+                                                                  : Bin2::ToFile(outputFS, &inputBin, cfg);
 
-                                return functor(
-                                    &inputBin,
-                                    输出类型_SelectedFlag,
-                                    PrettyOutput,
-                                    ConstData,
-                                    HWithSRC,
-                                    输出形式_SelectedFlag
-                                );
+                                return functor(&inputBin,cfg);
                             }
                         );
                     }

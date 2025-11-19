@@ -5,13 +5,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(glfw3 REQUIRED)
+#find_package(glfw3 REQUIRED)
 
 include_directories(
 	"third_party"
     "include"
 )
-link_directories(./libs)
+link_directories(libs)
 
 file(GLOB IMGUI_SOURCES
 	"third_party/imgui/*.cpp"
@@ -35,7 +35,7 @@ add_library(imgui-toggle STATIC ${IMGUI_TOGGLE_SOURCES})
 target_include_directories(imgui-toggle PRIVATE
 	"third_party/imgui"
 )
-target_link_libraries(imgui glfw)
+target_link_libraries(imgui glfw3s)
 
 add_library(NotoSansSC-Regular STATIC source/NotoSansSC-Regular.cpp)
 add_library(ImGuiFileDialog STATIC third_party/ImGuiFileDialog/ImGuiFileDialog.cpp)
@@ -49,7 +49,7 @@ add_executable(${CMAKE_PROJECT_NAME}
  
 )
 
-#target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-mwindows") # for mingw
+#target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-mwindows") # for mingw gnu
 
 target_link_libraries(${CMAKE_PROJECT_NAME}
 	imgui
@@ -58,6 +58,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     
     NotoSansSC-Regular
     
-	glfw
+	glfw3s
 	opengl32
 )

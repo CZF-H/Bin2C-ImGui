@@ -5,92 +5,41 @@
 #ifndef BIN2C_HPP
 #define BIN2C_HPP
 
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <ios>
-#include <stdexcept>
-#include <string>
-#include <utility>
-#include <vector>
+#include "base.hpp"
 
-#ifndef NDEBUG
-#define BIN2C_ASSERT(cond, msg) \
-    do { \
-        if (!(cond)) { \
-            std::cerr << "Assertion failed: " << #cond << "\n" \
-            << "Message: " << msg << "\n" \
-            << "File: " << __FILE__ << ", Line: " << __LINE__ << std::endl; \
-            std::abort(); \
-        } \
-    } while (0)
-#else
-#define BIN2C_ASSERT(cond, msg) \
-        do { \
-            if (!(cond)) { \
-               return ::Bin2C::Res(false, msg); \
-            } \
-        } while (0)
-#endif
-
-#define BIN2C_MSG(m, r) r
-#define BIN2C_MSG_T(m) 1
-#define BIN2C_MSG_F(m) 0
-
-namespace Bin2C {
-    namespace fs = std::filesystem;
-    using baseBin_t = std::vector<uint8_t>;
-
+namespace Bin2::C {
     inline constexpr auto PROJECT_NAME = "Bin2C";
     inline constexpr auto PROJECT_AUTHOR = "江芷酱紫";
 
-    namespace Tools {
-        inline std::string makeValidV(const std::string& input) {
-            std::string result;
-            result.reserve(input.size());
+    namespace Inside {
+        enum TypeFlags : uint8_t {
+            TypeFlags_u8,
+            TypeFlags_u16,
+            TypeFlags_u32,
+            TypeFlags_u64,
+        };
+    }
 
-            for (const char c : input)
-                if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') result += c;
-                else result += '_';
-
-            if (!result.empty() && std::isdigit(static_cast<unsigned char>(result[0]))) return "_" + result;
-
-            return result;
-        }
-
-        inline bool noFileSuffix(const fs::path& p) {
-            const auto& ext = p.extension();
-            return ext.empty() || ext == ".";
-        }
-    } // namespace Tools
-
-    enum TypeFlags : uint8_t {
-        TypeFlags_u8,
-        TypeFlags_u16,
-        TypeFlags_u32,
-        TypeFlags_u64,
-    };
-
-    struct TypeFlag {
-        TypeFlag(const char* tName, const TypeFlags t)
+    struct TypeFlags {
+        TypeFlags(const char* tName, const Inside::TypeFlags t)
             : m_name(tName),
               m_flag(t) {}
 
         [[nodiscard]] const char* GetName() const { return m_name; }
-        [[nodiscard]] TypeFlags GetType() const { return m_flag; }
-        operator const char*() const { return m_name; } // NOLINT(*-explicit-constructor)
-        operator TypeFlags() const { return m_flag; } // NOLINT(*-explicit-constructor)
+        [[nodiscard]] Inside::TypeFlags GetType() const { return m_flag; }
+        operator const char*() const { return m_name; }     // NOLINT(*-explicit-constructor)
+        operator Inside::TypeFlags() const { return m_flag; } // NOLINT(*-explicit-constructor)
 
     private:
         const char* m_name;
-        TypeFlags m_flag;
+        Inside::TypeFlags m_flag;
     };
 
     namespace Type {
-        inline TypeFlag u8("unsigned char", TypeFlags_u8);
-        inline TypeFlag u16("unsigned short", TypeFlags_u16);
-        inline TypeFlag u32("unsigned int", TypeFlags_u32);
-        inline TypeFlag u64("unsigned long long", TypeFlags_u64);
+        inline TypeFlags u8("unsigned char", Inside::TypeFlags_u8);
+        inline TypeFlags u16("unsigned short", Inside::TypeFlags_u16);
+        inline TypeFlags u32("unsigned int", Inside::TypeFlags_u32);
+        inline TypeFlags u64("unsigned long long", Inside::TypeFlags_u64);
     } // namespace Type
 
     enum ExportType : uint8_t {
@@ -98,130 +47,91 @@ namespace Bin2C {
         ExportType_static,
         ExportType_inline
     };
+    
+    struct Output {
+        struct Config {
+            ~Config() = default;
 
-    struct Res {
-        bool m_status;
-        std::string m_msg;
-        explicit Res(const bool status = true, std::string msg = "")
-            : m_status(status),
-              m_msg(std::move(msg)) {}
+            TypeFlags flag = Type::u8;
+            ExportType exportType = ExportType_None;
+            bool pretty = false;
+            bool constant = false;
+            bool source = false;
 
-        [[nodiscard]] bool status() const { return m_status; }
-        operator bool() const { return status(); } // NOLINT(*-explicit-constructor)
+            static Config Default() { return {}; }
+        };
 
-        [[nodiscard]] std::string msg() const { return m_msg; }
-    };
+        explicit Output(fs::path file) : m_file(std::move(file)) {}
 
-    class Bin {
-        baseBin_t m_data;
-    protected:
-        fs::path m_file;
-        size_t m_size;
+        explicit Output() = default;
 
-    public:
-        explicit Bin() {
-            m_file = "";
-            m_data.clear();
-            m_size = 0;
-        }
-        explicit Bin(fs::path file) : m_file(std::move(file)) {
-            if (!fs::exists(m_file))
-                throw std::invalid_argument("File not found: " + m_file.string());
-            if (!fs::is_regular_file(m_file))
-                throw std::invalid_argument("Path is not a regular file: " + m_file.string());
-            std::ifstream ifs(m_file, std::ios::binary);
-            if (!ifs) throw std::runtime_error("Failed to open file: " + m_file.string());
-            m_size = fs::file_size(m_file);
-            m_data = baseBin_t(m_size);
-            ifs.read(reinterpret_cast<char*>(m_data.data()), static_cast<std::streamsize>(m_size));
-            if (!ifs) throw std::runtime_error("Failed to read file or incomplete read: " + m_file.string());
-        }
-        ~Bin() {
-            m_data.clear();
-            m_data.clear();
-        }
-
-        void operator()(fs::path file) {
-            m_file = std::move(file);
-
-            if (!fs::exists(m_file) || !fs::is_regular_file(m_file)) throw std::invalid_argument("File not found");
-            std::ifstream ifs(m_file, std::ios::binary);
-            ifs.seekg(0, std::ios::end);
-            m_size = ifs.tellg();
-            ifs.seekg(0, std::ios::beg);
-            m_data = baseBin_t(m_size);
-            ifs.read(
-                reinterpret_cast<char*>(m_data.data()),
-                static_cast<std::streamsize>(m_size)
-            );
-        }
-
-        [[nodiscard]] baseBin_t GetData() const { return m_data; }
-        [[nodiscard]] fs::path GetFile() const { return m_file; }
-        [[nodiscard]] size_t GetSize() const { return m_size; }
-        [[nodiscard]] bool DeclareOnly() const { return m_data.size() == 0; }
-    };
-
-    struct ToFile {
-        explicit ToFile(fs::path file) : m_file(std::move(file)) {}
-        explicit ToFile() = default;
-
-        explicit ToFile(const Bin* dataStruct, const bool isSRC = false) {
+        explicit Output(const Bin* dataStruct, const bool isSRC = false) {
             if (!dataStruct) throw std::invalid_argument("dataStruct is nullptr");
             if (dataStruct->DeclareOnly()) throw std::invalid_argument("dataStruct is null");
-            auto p = dataStruct->GetFile().string() + (isSRC ? ".c" : ".h");
+            const auto p = dataStruct->GetFile().string() + (isSRC ? ".c" : ".h");
             m_file = std::move(fs::path(p));
         }
 
-        explicit ToFile(const fs::path& path, const fs::path& name) {
+        explicit Output(const Bin* dataStruct, const Config& cfg) : Output(dataStruct, cfg.source) {}
+
+        explicit Output(const fs::path& path, const fs::path& name) {
             m_file = std::move(path / name);
         }
 
-        explicit ToFile(const fs::path& path, const Bin* dataStruct, const bool isSRC = false) {
+        explicit Output(const fs::path& path, const Bin* dataStruct, const bool isSRC = false) {
             if (!dataStruct) throw std::invalid_argument("dataStruct is nullptr");
             if (dataStruct->DeclareOnly()) throw std::invalid_argument("dataStruct is null");
             m_file = std::move(path / fs::path(dataStruct->GetFile().filename().string() + (isSRC ? ".c" : ".h")));
         }
 
+        explicit Output(const fs::path& path, const Bin* dataStruct, const Config& cfg) : Output(
+            path,
+            dataStruct,
+            cfg.source
+        ) {}
+
+        ~Output() = default;
+
         Res operator()(
             Bin* dataStruct,
-            const TypeFlag& flag = Type::u8,
-            const bool prettyOutput = true,
-            const bool constData = false,
-            const bool exportSourceWithHeader = false,
-            const ExportType& exportType = ExportType_static
+            const Config& cfg = Config::Default()
         ) const {
             static const std::string TAB(4, ' ');
             static const std::string SPACE(" ");
-            static const std::string NEW_LINE("\n");
+            static const std::string ENDL("\n");
 
-            BIN2C_ASSERT(dataStruct, "dataStruct is nullptr");
-            BIN2C_ASSERT(!dataStruct->DeclareOnly(), "dataStruct is null");
+            BIN2FILE_ASSERT(dataStruct, "dataStruct is nullptr");
+            BIN2FILE_ASSERT(!dataStruct->DeclareOnly(), "dataStruct is null");
+
+            const std::string timeStr = Tools::format("{:%Y/%m/%d %H:%M:%S}", std::chrono::system_clock::now());
+            const std::string usrName = GetSysUsrName();
 
             const std::string fileNameValid =
                 Tools::makeValidV(dataStruct->GetFile().filename().string());
-            const std::string protectStart = std::format(
+            const std::string protectStart = Tools::format(
                 "\n\n#pragma once\n#ifndef BIN_{}_HEADER\n#define BIN_{}_HEADER",
                 fileNameValid,
                 fileNameValid
             );
-            const std::string protectEnd = std::format(
+            const std::string protectEnd = Tools::format(
                 "\n\n#endif // BIN_{}_HEADER",
                 fileNameValid
             );
 
-            std::string headString = std::format(
-                "// {} - Generated by {}, author {}.\n\n// In file: \"{}\".\n// Written to \"{}\".",
-                exportSourceWithHeader ? "Source" : "File",
+            std::string headString = Tools::format(
+                "// BinC {} - Generation Tool by {}, author {}.\n\n// Generate by {} at {}.\n\n// In file: \"{}\".\n// Written to: \"{}\".",
+                cfg.source ? "Source" : "File",
                 PROJECT_NAME,
                 PROJECT_AUTHOR,
+                usrName,
+                timeStr,
                 fs::absolute(dataStruct->GetFile()).string(),
                 fs::absolute(this->m_file).string()
             );
 
             std::string addBeforeKey;
-            if (!exportSourceWithHeader)
-                switch (exportType) {
+            if (!cfg.source)
+                switch (cfg.exportType) {
                     case ExportType_static: addBeforeKey = "static ";
                         break;
                     case ExportType_inline: addBeforeKey = "inline ";
@@ -230,20 +140,20 @@ namespace Bin2C {
                 }
 
             std::string constDataKey;
-            if (constData) constDataKey = "const ";
+            if (cfg.constant) constDataKey = "const ";
 
             fs::path targetPath = this->m_file;
             if (fs::path parentDir = targetPath.parent_path(); !parentDir.empty() && !fs::exists(parentDir))
-                BIN2C_ASSERT(fs::create_directories(parentDir), "Can't create directory: " + parentDir.string());
+                BIN2FILE_ASSERT(fs::create_directories(parentDir), "Can't create directory: " + parentDir.string());
 
             std::ofstream ofs(this->m_file);
-            BIN2C_ASSERT(ofs.is_open(), "Can't open file for writing: " + this->m_file.string());
+            BIN2FILE_ASSERT(ofs.is_open(), "Can't open file for writing: " + this->m_file.string());
 
-            ofs << headString << (exportSourceWithHeader ? "" : protectStart) << "\n\n";
+            ofs << headString << (cfg.source ? "" : protectStart) << "\n\n";
 
             ofs << addBeforeKey << constDataKey << "unsigned long long " << fileNameValid
                 << "_len = " << dataStruct->GetSize() << ";\n";
-            ofs << addBeforeKey << constDataKey << flag.GetName() << SPACE << fileNameValid
+            ofs << addBeforeKey << constDataKey << cfg.flag.GetName() << SPACE << fileNameValid
                 << "[] = {\n";
 
             size_t numBytes = dataStruct->GetSize();
@@ -253,11 +163,12 @@ namespace Bin2C {
             if (rawData == nullptr || numBytes == 0) {
                 ofs.close();
                 if (fs::exists(this->m_file)) fs::remove(this->m_file);
-                BIN2C_ASSERT(rawData != nullptr || numBytes != 0, "Invalid or empty data in Bin structure");
+                BIN2FILE_ASSERT(rawData != nullptr || numBytes != 0, "Invalid or empty data in Bin structure");
             }
 
             size_t numElements = 0;
-            switch (flag.GetType()) {
+            switch (cfg.flag.GetType()) {
+                using namespace Inside;
                 case TypeFlags_u8: numElements = numBytes / sizeof(uint8_t);
                     break;
                 case TypeFlags_u16: numElements = numBytes / sizeof(uint16_t);
@@ -268,27 +179,28 @@ namespace Bin2C {
                     break;
                 default: ofs.close();
                     if (fs::exists(this->m_file)) fs::remove(this->m_file);
-                    BIN2C_ASSERT(false, "Invalid flag type encountered");
+                    BIN2FILE_ASSERT(false, "Invalid flag type encountered");
             }
 
             if (numElements == 0) {
                 ofs.close();
                 if (fs::exists(this->m_file)) fs::remove(this->m_file);
-                BIN2C_ASSERT(false, "No elements to export after byte-to-element conversion");
+                BIN2FILE_ASSERT(false, "No elements to export after byte-to-element conversion");
             }
 
             try {
-                switch (flag.GetType()) {
+                switch (cfg.flag.GetType()) {
+                    using namespace Inside;
                     case TypeFlags_u8:
                         {
                             const auto* data = rawData;
                             for (size_t i = 0; i < numElements; ++i) {
-                                if (prettyOutput) {
+                                if (cfg.pretty) {
                                     if (i % 12 == 0) ofs << TAB;
                                     ofs << "0x" << std::hex << std::uppercase << std::setw(2)
                                         << std::setfill('0') << static_cast<unsigned int>(data[i]);
                                     if (i != numElements - 1) ofs << ',';
-                                    if ((i + 1) % 12 == 0) ofs << NEW_LINE;
+                                    if ((i + 1) % 12 == 0) ofs << ENDL;
                                     else ofs << SPACE;
                                 } else {
                                     ofs << static_cast<short>(data[i]);
@@ -301,12 +213,12 @@ namespace Bin2C {
                         {
                             auto data = reinterpret_cast<const uint16_t*>(rawData);
                             for (size_t i = 0; i < numElements; ++i) {
-                                if (prettyOutput) {
+                                if (cfg.pretty) {
                                     if (i % 8 == 0) ofs << TAB;
                                     ofs << "0x" << std::hex << std::uppercase << std::setw(4)
                                         << std::setfill('0') << data[i];
                                     if (i != numElements - 1) ofs << ',';
-                                    if ((i + 1) % 8 == 0) ofs << NEW_LINE;
+                                    if ((i + 1) % 8 == 0) ofs << ENDL;
                                     else ofs << SPACE;
                                 } else {
                                     ofs << data[i];
@@ -319,12 +231,12 @@ namespace Bin2C {
                         {
                             auto data = reinterpret_cast<const uint32_t*>(rawData);
                             for (size_t i = 0; i < numElements; ++i) {
-                                if (prettyOutput) {
+                                if (cfg.pretty) {
                                     if (i % 6 == 0) ofs << TAB;
                                     ofs << "0x" << std::hex << std::uppercase << std::setw(8)
                                         << std::setfill('0') << data[i];
                                     if (i != numElements - 1) ofs << ", ";
-                                    if ((i + 1) % 6 == 0) ofs << NEW_LINE;
+                                    if ((i + 1) % 6 == 0) ofs << ENDL;
                                     else ofs << SPACE;
                                 } else {
                                     ofs << data[i];
@@ -337,12 +249,12 @@ namespace Bin2C {
                         {
                             auto data = reinterpret_cast<const uint64_t*>(rawData);
                             for (size_t i = 0; i < numElements; ++i) {
-                                if (prettyOutput) {
+                                if (cfg.pretty) {
                                     if (i % 4 == 0) ofs << TAB;
                                     ofs << "0x" << std::hex << std::uppercase << std::setw(16)
                                         << std::setfill('0') << data[i];
                                     if (i != numElements - 1) ofs << ",";
-                                    if ((i + 1) % 4 == 0) ofs << NEW_LINE;
+                                    if ((i + 1) % 4 == 0) ofs << ENDL;
                                     else ofs << SPACE;
                                 } else {
                                     ofs << data[i];
@@ -355,38 +267,41 @@ namespace Bin2C {
                         {
                             ofs.close();
                             if (fs::exists(this->m_file)) fs::remove(this->m_file);
-                            BIN2C_ASSERT(false, "Invalid flag type encountered");
+                            BIN2FILE_ASSERT(false, "Invalid flag type encountered");
                         }
                 }
             } catch (const std::exception& e) {
                 ofs.close();
                 if (fs::exists(this->m_file)) fs::remove(this->m_file);
-                BIN2C_ASSERT(false, std::string("Exception while writing data: ") + e.what());
+                BIN2FILE_ASSERT(false, std::string("Exception while writing data: ") + e.what());
             }
 
             ofs << "\n}; // " << fileNameValid << "_end (" << numElements
-                << " elements)" << (exportSourceWithHeader ? "" : protectEnd);
+                << " elements)" << (cfg.source ? "" : protectEnd);
 
             ofs.close();
 
-            if (exportSourceWithHeader) {
-                fs::path headerFile = fs::absolute(this->m_file.has_stem() ? this->m_file.stem() : "_").string() + ".h";
-                headString = std::format(
-                    "// {} - Generated by {}, author {}.\n\n// In file: \"{}\".\n// Link \"{}\".\n// Written to \"{}\".",
+            if (cfg.source) {
+                fs::path headerFile = fs::absolute(this->m_file.has_stem() ? this->m_file.stem() : "_").string() +
+                                      ".h";
+                headString = Tools::format(
+                "// BinC {} - Generation Tool by {}, author {}.\n\n// Generate by {} at {}.\n\n// In file: \"{}\".\n// Written to: \"{}\".",
                     "Header",
                     PROJECT_NAME,
                     PROJECT_AUTHOR,
+                    usrName,
+                    timeStr,
                     fs::absolute(dataStruct->GetFile()).string(),
                     fs::absolute(this->m_file).string(),
                     headerFile.string()
                 );
                 std::ofstream h_ofs(headerFile);
-                BIN2C_ASSERT(h_ofs.is_open(), "Can't open file for writing: " + headerFile.string());
+                BIN2FILE_ASSERT(h_ofs.is_open(), "Can't open file for writing: " + headerFile.string());
                 h_ofs << headString << protectStart << "\n\n";
 
                 h_ofs << "extern " << constDataKey << "unsigned long long " << fileNameValid
                     << "_len; // " << dataStruct->GetSize() << " bits\n";
-                h_ofs << "extern " << constDataKey << flag.GetName() << ' ' << fileNameValid
+                h_ofs << "extern " << constDataKey << cfg.flag.GetName() << ' ' << fileNameValid
                     << "[]; // " << numElements << " elements";
 
                 h_ofs << protectEnd;
