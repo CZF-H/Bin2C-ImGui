@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#define nolint(x)
+
 #ifdef _MSVC_LANG
 #define _cpp_ver _MSVC_LANG
 #else
@@ -161,12 +163,14 @@ namespace ImUtils {
             return m_Range;
         }
 
-        // NOLINTNEXTLINE(*-explicit-constructor)
-        operator const ImWchar*() const {
+        // C API
+        operator // NOLINT(*-explicit-constructor)
+        nolint(operator) const ImWchar*() const {
             return data();
         }
 
         base_t& operator*() {
+
             return m_Range;
         }
 
