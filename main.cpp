@@ -404,7 +404,7 @@ void GUI() {
             } else ImGui::SeparatorText("二进制操作");
 
             if (ImGui::BeginChild("##操作")) {
-                static Bin2::ToFile::Config cfg;
+                static Bin2C::Output::Config cfg;
                 try {
                     ImGui::Checkbox(" 美观化 ", &cfg.pretty);
 
@@ -488,9 +488,9 @@ void GUI() {
                         outputFuture = g_BackgroundTask.submit_task(
                             [&]() {
                                 Bin2::Res result;
-                                const Bin2::ToFile functor = fs::is_regular_file(outputFS)
-                                                                  ? Bin2::ToFile(outputFS)
-                                                                  : Bin2::ToFile(outputFS, &inputBin, cfg);
+                                const Bin2C::Output functor = fs::is_regular_file(outputFS)
+                                                                  ? Bin2C::Output(outputFS)
+                                                                  : Bin2C::Output(outputFS, &inputBin, cfg);
 
                                 return functor(&inputBin,cfg);
                             }
