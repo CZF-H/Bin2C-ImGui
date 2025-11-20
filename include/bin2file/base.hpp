@@ -27,6 +27,7 @@
 #include "third_party/fmt/chrono.h" // for time format
 #endif
 #include <stdexcept>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -60,6 +61,56 @@
 #define BIN2FILE_MSG_F(m) 0
 
 namespace Bin2 {
+    namespace Inside {
+        enum TypeFlags : uint8_t {
+            // Bin2C
+            TypeFlags_u8,
+            TypeFlags_u16,
+            TypeFlags_u32,
+            TypeFlags_u64,
+            // Bin2CPP
+            TypeFlags_vec_u8,
+            TypeFlags_vec_u16,
+            TypeFlags_vec_u32,
+            TypeFlags_vec_u64,
+            TypeFlags_vec_byte,
+            // Bin2Str
+
+            // Bin2Num
+        };
+
+        inline size_t SizeOf(const TypeFlags t) {
+            switch (t) {
+                case TypeFlags_u8: return sizeof(uint8_t);
+                case TypeFlags_u16: return sizeof(uint16_t);
+                case TypeFlags_u32: return sizeof(uint32_t);
+                case TypeFlags_u64: return sizeof(uint64_t);
+                default: return 0;
+            }
+        }
+    }
+
+    struct TypeFlags {
+        TypeFlags(const char* tName, const Inside::TypeFlags t)
+            : m_name(tName),
+              m_flag(t) {}
+
+        [[nodiscard]] const char* GetName() const { return m_name; }
+        [[nodiscard]] Inside::TypeFlags GetType() const { return m_flag; }
+        operator const char*() const { return m_name; }       // NOLINT(*-explicit-constructor)
+        operator Inside::TypeFlags() const { return m_flag; } // NOLINT(*-explicit-constructor)
+
+    private:
+        const char* m_name;
+        Inside::TypeFlags m_flag;
+    };
+
+    enum ExportType : uint8_t {
+        ExportType_None,
+        ExportType_static,
+        ExportType_inline
+    };
+
     using env_str_t = std::optional<std::string>;
 
     inline env_str_t GetENV(const std::string& key) {
@@ -88,8 +139,14 @@ namespace Bin2 {
         if (!GetUserNameW(username, &size))
             return defaultName;
         const int size_needed = WideCharToMultiByte(
-            CP_UTF8, 0, username, static_cast<int>(size - 1),
-            nullptr, 0,nullptr, nullptr
+            CP_UTF8,
+            0,
+            username,
+            static_cast<int>(size - 1),
+            nullptr,
+            0,
+            nullptr,
+            nullptr
         );
 
         if (size_needed <= 0)
@@ -97,20 +154,25 @@ namespace Bin2 {
 
         std::string u8usrName(size_needed, 0);
         const int result = WideCharToMultiByte(
-            CP_UTF8, 0, username,
-            static_cast<int>(size - 1), &u8usrName[0],
-            size_needed, nullptr, nullptr
+            CP_UTF8,
+            0,
+            username,
+            static_cast<int>(size - 1),
+            &u8usrName[0],
+            size_needed,
+            nullptr,
+            nullptr
         );
 
         if (result <= 0) return defaultName;
         return u8usrName;
         #else
         return usrName =
-            GetENV("USER")
-            .value_or(
-                GetENV("USERNAME")
-                .value_or(defaultName)
-            );
+               GetENV("USER")
+              .value_or(
+                   GetENV("USERNAME")
+                  .value_or(defaultName)
+               );
         #endif
     }
 
@@ -122,14 +184,32 @@ namespace Bin2 {
             std::string result;
             result.reserve(input.size());
 
-            for (const char c : input)
-                if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') result += c;
-                else result += '_';
+            static const std::vector chars_to_replace = {
+                '~', '`', '!', '@', '#', '$', '%', '^', '&', '*',
+                '(', ')', '-', '+', '=', '{', '}', '[', ']', '\\',
+                '|', ':', ';', '"', '\'', '<', '>', '?', ',', '.', '/'
+            };
 
-            if (!result.empty() && std::isdigit(static_cast<unsigned char>(result[0]))) return "_" + result;
+            for (const char c : input) {
+                bool should_replace = false;
+                for (const char bad_char : chars_to_replace) {
+                    if (c == bad_char) {
+                        should_replace = true;
+                        break;
+                    }
+                }
+
+                if (should_replace) result += '_';
+                else result += c;
+            }
+
+            if (!result.empty() && result[0] >= '0' && result[0] <= '9') {
+                return "_" + result;
+            }
 
             return result;
         }
+
 
         inline bool noFileSuffix(const fs::path& p) {
             const auto& ext = p.extension();
@@ -137,11 +217,10 @@ namespace Bin2 {
         }
 
         #ifdef CXX_FORMAT
-            using std::format;
+        using std::format;
         #else
-            using fmt::format;
+        using fmt::format;
         #endif
-
     } // namespace Tools
 
     struct Res {
