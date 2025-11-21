@@ -51,7 +51,7 @@
 #define BIN2FILE_ASSERT(cond, msg) \
         do { \
             if (!(cond)) { \
-               return ::Bin2File::Res(false, msg); \
+               return ::Bin2::Res(false, msg); \
             } \
         } while (0)
 #endif

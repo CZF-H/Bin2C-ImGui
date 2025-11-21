@@ -12,7 +12,7 @@
 
 #include "imutils/fonts.hpp"
 
-#include "include/NotoSansSC-Regular.h"
+#include "include/NotoSansSC-Regular.ttf.h"
 
 #include "include/BS_thread_pool.hpp"
 #include "imgui_internal.h"
@@ -92,11 +92,8 @@ void GUI() {
 
         io.Fonts->AddFontFromMemoryTTF(
             NotoSansSC_Regular_ttf,
-            // 自动退化指针
-            static_cast<int>(
-                NotoSansSC_Regular_ttf_len
-            ),
-            // 显式转换
+            // NOLINTNEXTLINE(*-narrowing-conversions)
+            NotoSansSC_Regular_ttf_len,
             21.0f,
             nullptr,
             ImUtils::Glyph({
@@ -120,6 +117,8 @@ void GUI() {
         ImGui_ImplGlfw_InitForOpenGL(g_Window, true);
 
         ImGui_ImplOpenGL3_Init("#version 300es");
+
+        io.Fonts->Build();
 
         initImGui = true;
     }
@@ -259,6 +258,7 @@ void GUI() {
                 SeparatorTitle(" Input 输入", 1.75f);
                 ImGui::PopStyleVar();
                 ImGui::TextUnformatted("输入文件:");
+                // ImGui::TextUnformatted("临时测试 ☆*: .｡. o(≧▽≦)o .｡.:*☆ 한국어 Русский にほんご ");
                 ImGui::InputText("##输入", &inputFile);
                 ImGui::SameLine();
                 ChooseFile(inputFile);
@@ -392,7 +392,7 @@ void GUI() {
             if (ImGui::BeginChild("##二进制信息")) {
                 if (!inputBin.DeclareOnly()) {
                     ImGui::TextWrapped("二进制大小: %zu", inputBin.GetSize());
-                    ImGui::TextWrapped("二进制文件: %s", inputBin.GetFile().string().c_str());
+                    ImGui::TextWrapped("二进制文件: %s", inputBin.GetFile().filename().string().c_str());
                 }
                 ImGui::EndChild();
             }

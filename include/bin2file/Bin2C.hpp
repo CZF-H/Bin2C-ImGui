@@ -1,5 +1,5 @@
 //
-// Created by wanjiangzhi on 2025/10/21.
+// Created by wanjiangzhi on 2025/11/21.
 //
 
 #ifndef BIN2C_HPP
@@ -129,15 +129,15 @@ namespace Bin2 {
 
                 ofs << headString << (cfg.source ? "" : protectStart) << "\n\n";
 
-                ofs << addBeforeKey << "unsigned long long " << fileNameValid
+                ofs << addBeforeKey << constDataKey << "unsigned long long " << fileNameValid
                     << "_len = " << dataStruct->GetSize() << ";\n";
                 ofs << addBeforeKey << constDataKey << cfg.flag.GetName() << SPACE << fileNameValid
                     << "[] = {\n";
 
-                size_t numBytes = dataStruct->GetSize();
-                size_t elements = 0;
+                std::size_t numBytes = dataStruct->GetSize();
+                std::size_t elements = 0;
                 auto binData = dataStruct->GetData();
-                const uint8_t* data = binData.data();
+                const std::uint8_t* data = binData.data();
 
                 if (data == nullptr || numBytes == 0) {
                     ofs.close();
@@ -151,16 +151,16 @@ namespace Bin2 {
                             #define General_Parameters(num) ofs, data, numBytes, cfg.pretty
                             using namespace Inside;
                         case TypeFlags_u8:
-                            elements = wrData<uint8_t>(General_Parameters(4), 12);
+                            elements = wrData<std::uint8_t>(General_Parameters(4), 12);
                             break;
                         case TypeFlags_u16:
-                            elements = wrData<uint16_t>(General_Parameters(4), 8);
+                            elements = wrData<std::uint16_t>(General_Parameters(4), 8);
                             break;
                         case TypeFlags_u32:
-                            elements = wrData<uint32_t>(General_Parameters(4), 6);
+                            elements = wrData<std::uint32_t>(General_Parameters(4), 6);
                             break;
                         case TypeFlags_u64:
-                            elements = wrData<uint64_t>(General_Parameters(4), 4);
+                            elements = wrData<std::uint64_t>(General_Parameters(4), 4);
                             break;
                         default:
                             {
@@ -182,8 +182,7 @@ namespace Bin2 {
                 ofs.close();
 
                 if (cfg.source) {
-                    fs::path headerFile = fs::absolute(this->m_file.has_stem() ? this->m_file.stem() : "_").string() +
-                                          ".h";
+                    fs::path headerFile = this->m_file.parent_path() / fs::path(this->m_file.has_stem() ? this->m_file.stem().string() + ".h" : "_.h");
                     headString = Tools::format(
                         "// Bin {} - Generation Tool by {}, author {}.\n\n// Generate by {} at {}.\n\n// In file: \"{}\",\n// Written to: \"{}\".",
                         "Header",
@@ -215,35 +214,35 @@ namespace Bin2 {
 
         private:
             template <typename T>
-            size_t wrData(
+            std::size_t wrData(
                 std::ostream& ofs,
-                const uint8_t* data,
-                const size_t byteNum,
+                const std::uint8_t* data,
+                const std::size_t byteNum,
                 const bool pretty,
-                const size_t lineNum,
+                const std::size_t lineNum,
                 const char tab = '\t',
                 const char space = ' ',
                 const char endl = '\n',
                 const char comma = ','
             ) const {
                 const T* rawData = reinterpret_cast<const T*>(data);
-                constexpr bool is_u8 = std::is_same_v<T, uint8_t>;
-                const size_t numElements = byteNum / sizeof(T);
-                for (size_t i = 0; i < numElements; ++i) {
+                constexpr bool is_u8 = std::is_same_v<T, std::uint8_t>;
+                const std::size_t numElements = byteNum / sizeof(T);
+                for (std::size_t i = 0; i < numElements; ++i) {
                     if (pretty) {
                         if (i % lineNum == 0) ofs << tab;
                         ofs << "0x"
                             << std::hex << std::uppercase
                             << std::setw(sizeof(T) * 2)
                             << std::setfill('0')
-                            << (is_u8 ? static_cast<unsigned int>(rawData[i]) : rawData[i]);
+                            << (is_u8 ? static_cast<std::uint32_t>(rawData[i]) : rawData[i]);
 
                         if (i != numElements - 1) ofs << comma;
                         if ((i + 1) % lineNum == 0) ofs << endl;
                         else ofs << space;
                     } else {
                         if constexpr (is_u8)
-                            ofs << static_cast<short>(rawData[i]); // 宽化
+                            ofs << static_cast<std::int16_t>(rawData[i]); // 宽化
                         else ofs << rawData[i];
 
                         if (i != numElements - 1) ofs << comma;
@@ -252,7 +251,8 @@ namespace Bin2 {
                 return numElements;
             }
         };
-    }} // namespace Bin2C
+    }
+} // namespace Bin2C
 namespace Bin2C = Bin2::C;
 
 #endif // BIN2C_HPP

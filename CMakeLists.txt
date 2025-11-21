@@ -37,7 +37,7 @@ target_include_directories(imgui-toggle PRIVATE
 )
 target_link_libraries(imgui glfw3s)
 
-add_library(NotoSansSC-Regular STATIC source/NotoSansSC-Regular.cpp)
+add_library(NotoSansSC-Regular STATIC source/NotoSansSC-Regular.ttf.c)
 add_library(ImGuiFileDialog STATIC third_party/ImGuiFileDialog/ImGuiFileDialog.cpp)
 target_include_directories(ImGuiFileDialog PUBLIC
     "third_party/imgui"
