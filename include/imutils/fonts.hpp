@@ -326,19 +326,19 @@ namespace ImUtils {
         data_t m_data;
 
     public:
-        static Glyph& GetGlyphRangesDefault() {
+        static const Glyph& GetGlyphRangesDefault() {
             static Glyph ret(0x0020, 0x00FF); // Basic Latin + Latin Supplement
             return ret;
         }
 
-        static Glyph& GetGlyphRangesGreek() {
+        static const Glyph& GetGlyphRangesGreek() {
             static Glyph ret =
                 GetGlyphRangesDefault() +
                 Glyph(0x0370, 0x03FF); // Greek and Coptic
             return ret;
         }
 
-        static Glyph& GetGlyphRangesKorean() {
+        static const Glyph& GetGlyphRangesKorean() {
             static Glyph ret =
                 GetGlyphRangesDefault() +
                 Glyph(
@@ -354,7 +354,7 @@ namespace ImUtils {
             return ret;
         }
 
-        static Glyph& GetGlyphRangesCJKBase() {
+        static const Glyph& GetGlyphRangesCJKBase() {
             static Glyph ret =
                 GetGlyphRangesDefault() +
                 Glyph(
@@ -374,30 +374,30 @@ namespace ImUtils {
             return ret;
         }
 
-        static Glyph& GetGlyphRangesChineseFull() {
+        static const Glyph& GetGlyphRangesChineseFull() {
             static Glyph ret =
                 GetGlyphRangesCJKBase() +
                 Glyph(0x4E00, 0x9FAF); // CJK Ideograms
             return ret;
         }
 
-        static Glyph& GetGlyphRangesCJK() { return GetGlyphRangesChineseFull(); }
+        static const Glyph& GetGlyphRangesCJK() { return GetGlyphRangesChineseFull(); }
 
-        static Glyph& GetGlyphRangesChineseSimplifiedCommon() {
+        static const Glyph& GetGlyphRangesChineseSimplifiedCommon() {
             static Glyph ret =
                 Glyph(UnpackOffsets(0x4E00, GlyphOffset::GetGlyphRangesChineseSimplifiedCommon)) +
                 GetGlyphRangesCJKBase();
             return ret;
         }
 
-        static Glyph& GetGlyphRangesJapanese() {
+        static const Glyph& GetGlyphRangesJapanese() {
             static Glyph ret =
                 Glyph(UnpackOffsets(0x4E00, GlyphOffset::GetGlyphRangesJapanese)) +
                 GetGlyphRangesCJKBase();
             return ret;
         }
 
-        static Glyph& GetGlyphRangesCyrillic() {
+        static const Glyph& GetGlyphRangesCyrillic() {
             static Glyph ret =
                 GetGlyphRangesDefault() +
                 Glyph(
@@ -413,7 +413,7 @@ namespace ImUtils {
             return ret;
         }
 
-        static Glyph& GetGlyphRangesThai() {
+        static const Glyph& GetGlyphRangesThai() {
             static Glyph ret =
                 GetGlyphRangesDefault() +
                 Glyph(
@@ -427,7 +427,7 @@ namespace ImUtils {
             return ret;
         }
 
-        static Glyph& GetGlyphRangesVietnamese() {
+        static const Glyph& GetGlyphRangesVietnamese() {
             static Glyph ret =
                 GetGlyphRangesDefault() +
                 Glyph(

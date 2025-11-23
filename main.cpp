@@ -96,19 +96,14 @@ void GUI() {
             NotoSansSC_Regular_ttf_len,
             21.0f,
             nullptr,
+            ImUtils::Glyph::GetGlyphRangesChineseFull() +
+            ImUtils::Glyph::GetGlyphRangesCyrillic() +
             ImUtils::Glyph({
-                {0x0020, 0x007F}, // Latin kaomoji basic
-                {0x00A0, 0x00FF}, // Latin kaomoji exp
-                {0x0400, 0x04FF}, // Russian
                 {0x2190, 0x21FF}, // Arrows
                 {0x25A0, 0x25FF}, // kaomoji graphics and geometry
                 {0x2600, 0x26FF}, // kaomoji miscellaneous
                 {0x2700, 0x27BF}, // kaomoji dingbats
-                {0x3000, 0x303F}, // CJK kaomoji
-                {0x3040, 0x309F}, // Japanese kaomoji exp
-                {0x30A0, 0x30FF}, // Japanese kaomoji
                 {0x3400, 0x4DBF}, // 生僻字
-                {0x4E00, 0x9FFF}, // 中日韩统一表意文字
             })
         );
 
