@@ -184,8 +184,8 @@ namespace Bin2 {
                 if (cfg.source) {
                     fs::path headerFile = this->m_file.parent_path() / fs::path(this->m_file.has_stem() ? this->m_file.stem().string() + ".h" : "_.h");
                     headString = Tools::format(
-                        "// Bin {} - Generation Tool by {}, author {}.\n\n// Generate by {} at {}.\n\n// In file: \"{}\",\n// Written to: \"{}\".",
-                        "Header",
+                        "// Bin {} - Generation Tool by {}, author {}.\n\n// Generate by {} at {}.\n\n// In file: \"{}\",\n// Written to: \"{}\",",
+                        "Header\n// Header \"{}\".",
                         PROJECT_NAME,
                         PROJECT_AUTHOR,
                         usrName,
@@ -198,10 +198,14 @@ namespace Bin2 {
                     BIN2FILE_ASSERT(h_ofs.is_open(), "Can't open file for writing: " + headerFile.string());
                     h_ofs << headString << protectStart << "\n\n";
 
+                    h_ofs << "#ifdef __cplusplus" << "\n" << "extern \"C\"{\n";
+
                     h_ofs << "extern " << constDataKey << "unsigned long long " << fileNameValid
                         << "_len; // " << dataStruct->GetSize() << " bits\n";
                     h_ofs << "extern " << constDataKey << cfg.flag.GetName() << ' ' << fileNameValid
-                        << "[]; // " << numBytes / elements << " elements";
+                        << "[]; // " <<  elements << " elements";
+
+                    h_ofs << "\n}";
 
                     h_ofs << protectEnd;
                 }

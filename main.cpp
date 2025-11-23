@@ -12,9 +12,9 @@
 
 #include "imutils/fonts.hpp"
 
-#include "include/NotoSansSC-Regular.ttf.h"
+#include "NotoSansSC-Regular.ttf.h"
 
-#include "include/BS_thread_pool.hpp"
+#include "BS_thread_pool.hpp"
 #include "imgui_internal.h"
 #include "bin2file/Bin2C.hpp"
 

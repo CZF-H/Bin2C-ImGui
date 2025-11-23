@@ -46,7 +46,6 @@ target_include_directories(ImGuiFileDialog PUBLIC
 
 add_executable(${CMAKE_PROJECT_NAME}
 	main.cpp
- 
 )
 
 #target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-mwindows") # for mingw gnu
